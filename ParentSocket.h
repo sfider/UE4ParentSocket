@@ -10,7 +10,7 @@ struct FParentSocket
 {
     GENERATED_BODY()
     
-    UPROPERTY(EditAnywhere)
+    UPROPERTY(Category = "Socket", EditAnywhere)
     FName Name;
 
     FParentSocket() {}
