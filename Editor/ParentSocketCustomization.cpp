@@ -8,6 +8,9 @@
 #include "DetailWidgetRow.h"
 #include "Widgets/Input/SComboBox.h"
 #include "Widgets/Text/SMultiLineEditableText.h"
+#include "Toolkits/AssetEditorManager.h"
+#include "BlueprintEditor.h"
+#include "SSCSEditor.h"
 
 void FParentSocketCustomization::Register()
 {
@@ -61,8 +64,37 @@ FText FParentSocketCustomization::GetSocketName() const
     return Text;
 }
 
+static USceneComponent* FindSceneComponentParentInEditor(USceneComponent* SceneComp)
+{
+    for (UObject* EditedAsset : FAssetEditorManager::Get().GetAllEditedAssets())
+    {
+        if (UBlueprint* Blueprint = Cast<UBlueprint>(EditedAsset))
+        {
+            for (IAssetEditorInstance* AssetEditor : FAssetEditorManager::Get().FindEditorsForAsset(EditedAsset))
+            {
+                if (FBlueprintEditor* BlueprintEditor = static_cast<FBlueprintEditor*>(AssetEditor))
+                {
+                    if (TSharedPtr<SSCSEditor> SCSEditor = BlueprintEditor->GetSCSEditor())
+                    {
+                        if (FSCSEditorTreeNodePtrType SceneCompNode = SCSEditor->GetNodeFromActorComponent(SceneComp))
+                        {
+                            if (FSCSEditorTreeNodePtrType ParentCompNode = SceneCompNode->GetParent())
+                            {
+                                return Cast<USceneComponent>(ParentCompNode->GetEditableComponentTemplate(Blueprint));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+
 void FParentSocketCustomization::InitOptionsList(TSharedRef<IPropertyHandle> InPropertyHandle)
 {
+    OptionsList.Add(MakeShareable(new FName()));
+
     TArray<UObject*> OuterObjects;
     InPropertyHandle->GetOuterObjects(OuterObjects);
 
@@ -70,10 +102,15 @@ void FParentSocketCustomization::InitOptionsList(TSharedRef<IPropertyHandle> InP
     {
         if (USceneComponent* SceneComp = Cast<USceneComponent>(OuterObjects[0]))
         {
-            if (USceneComponent* ParentComp = SceneComp->GetAttachParent())
+            USceneComponent* ParentComp = SceneComp->GetAttachParent();
+            if (!ParentComp)
+            {
+                ParentComp = FindSceneComponentParentInEditor(SceneComp);
+            }
+            if (ParentComp)
             {
                 TArray<FName> SocketNames = ParentComp->GetAllSocketNames();
-                OptionsList.Reserve(SocketNames.Num());
+                OptionsList.Reserve(SocketNames.Num() + 1);
                 for (FName Socket : SocketNames)
                 {
                     OptionsList.Add(MakeShareable(new FName(Socket)));
