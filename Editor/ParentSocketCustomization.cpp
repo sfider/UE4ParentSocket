@@ -80,7 +80,7 @@ static USceneComponent* FindSceneComponentParentInEditor(USceneComponent* SceneC
                         {
                             if (FSCSEditorTreeNodePtrType ParentCompNode = SceneCompNode->GetParent())
                             {
-                                return Cast<USceneComponent>(ParentCompNode->GetEditableComponentTemplate(Blueprint));
+                                return Cast<USceneComponent>(ParentCompNode->GetComponentTemplate(Blueprint));
                             }
                         }
                     }
